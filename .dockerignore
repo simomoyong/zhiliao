@@ -1,0 +1,7 @@
+node_modules
+data/zhiliao.db
+logs
+.env
+*.log
+shot-*.png
+.DS_Store

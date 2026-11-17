@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "知了 · 门户通知同步",
+  "version": "0.1.0",
+  "description": "把校园门户的通知自动同步到本机知了（127.0.0.1:8787）",
+  "permissions": [
+    "alarms",
+    "scripting",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://portal.chd.edu.cn/*",
+    "http://127.0.0.1:8787/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://portal.chd.edu.cn/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "知了 · 门户通知同步",
+    "default_popup": "popup.html"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArnMTiEHVWdY5ODF8Rzq4+dgu0ygenrckCqolxBcr+tONLsv7TDfRM5VyS7V+OUs4TtPwWuF5ImvmiPcdtRJW6pyOWkpYWeNYcT9ih5qZNzMvqeFiia7pZCCqPYpW3BVD/CYWFLBK4Imig4D0IbYLwTDJq4esgnl90RgUjNJlYGfbYD2dabq/ghKKYUgoUH/MvvhItJE6YGills6FMqd82oun+rOkVkPv6vYz0R91izpPsh4Ml8g1z0o8BYt42rbOkSZVTMLz/c5YAnoe0XzTt2bA6CELeys4mPhi5Vr/mOotx3TyjB400lrSJlUy//mgY0EpL7wA/avcXycMc3aQ/QIDAQAB",
+  "externally_connectable": {
+    "matches": [
+      "http://127.0.0.1:8787/*",
+      "http://localhost:8787/*"
+    ]
+  }
+}

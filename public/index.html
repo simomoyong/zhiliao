@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>知了 · 校园通知</title>
+<meta name="description" content="长安大学校园通知聚合：自动抓取、AI 摘要、截止提醒。" />
+<meta name="theme-color" content="#17385C" />
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <span class="logo">知了</span>
+      <span class="sub">校园通知</span>
+    </div>
+    <button class="unread" id="unreadBtn" title="未读">--</button>
+  </header>
+
+  <div class="toolbar">
+    <div class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="搜通知、部门、关键词" autocomplete="off" />
+    </div>
+    <div class="chips" id="cats"></div>
+  </div>
+
+  <main id="main" class="main"></main>
+
+  <nav class="tabs">
+    <button class="tab on" data-view="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>
+      通知
+    </button>
+    <button class="tab" data-view="wechat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-2.8-.4L4 21l1.2-3.6A8.2 8.2 0 0 1 3 11.5 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5Z"/></svg>
+      公众号
+    </button>
+    <button class="tab" data-view="subs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16"/><path d="M4 12h10"/><path d="M4 17h7"/></svg>
+      订阅
+    </button>
+    <button class="tab" data-view="me">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>
+      我的
+    </button>
+  </nav>
+</div>
+
+<div class="sheet" id="sheet" aria-hidden="true">
+  <div class="sheet-panel" id="sheetPanel"></div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

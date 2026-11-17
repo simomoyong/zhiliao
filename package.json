@@ -1,0 +1,15 @@
+{
+  "name": "zhiliao",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "知了 · 长安大学校园通知聚合与提醒",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs",
+    "crawl": "node scripts/crawl.mjs"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}
