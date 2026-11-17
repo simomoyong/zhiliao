@@ -8,7 +8,7 @@ COPY server.mjs ./
 COPY lib ./lib
 COPY public ./public
 COPY scripts ./scripts
-COPY data/sources.json ./data/sources.json
+COPY data ./data
 COPY extension ./extension
 
 ENV NODE_ENV=production

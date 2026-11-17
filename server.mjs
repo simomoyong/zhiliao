@@ -5,12 +5,14 @@ import crypto from 'node:crypto';
 import { loadEnv, hasAI, analyze } from './lib/ai.mjs';
 import { runCrawl } from './lib/crawl.mjs';
 import {
-  seedIfEmpty, listItems, getItem, markRead, toggleSave, unreadCount,
+  seedIfEmpty, seedSnapshot, listItems, getItem, markRead, toggleSave, unreadCount,
   getPrefs, setPrefs, insertItem, itemExists, titleExists
 } from './lib/db.mjs';
 
 loadEnv();
 seedIfEmpty();
+const snapshotAdded = seedSnapshot();
+if (snapshotAdded) console.log(`已从快照导入 ${snapshotAdded} 条真实通知`);
 
 let SOURCES = [];
 try {
