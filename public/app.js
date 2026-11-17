@@ -13,6 +13,7 @@ const state = {
   feed: localStorage.getItem('zl_feed') || 'subs'
 };
 
+const IS_LOCAL = ['127.0.0.1', 'localhost'].includes(location.hostname);
 const CATS = ['全部', '竞赛', '奖助', '教务', '就业', '讲座', '生活', '会议', '行政'];
 const $ = (s) => document.querySelector(s);
 const esc = (s = '') => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -502,6 +503,13 @@ function portalStatus() {
 }
 
 function syncBar() {
+  if (!IS_LOCAL) {
+    return `<div class="sync-bar">
+      <span class="live off"></span>
+      <span>线上演示版 · 门户同步仅本机可用</span>
+      <button id="goPortal">说明 ›</button>
+    </div>`;
+  }
   const st = portalStatus();
   return `<div class="sync-bar">
     <span class="live ${st.live ? '' : 'off'}"></span>
@@ -571,6 +579,7 @@ function recordDuration(mode, ms) {
 }
 
 async function triggerSync() {
+  if (!IS_LOCAL) { window.open('/portal', '_blank'); return; }
   // 先取一次最新状态，避免把“历史记录”误判成“这次同步成功”
   try { state.portal = await api('/api/portal-status'); } catch (e) {}
   syncStartedAt = Date.now();
@@ -634,8 +643,8 @@ function renderPortal() {
   $('#main').innerHTML = `
     <div class="hero-card">
       <h2>接通校园门户</h2>
-      <p>点一下同步：门户开着就直接抓；没登录就直接打开登录页，登录完自动同步。</p>
-      <button class="btn" id="syncNowBtn2">一键同步</button>
+      <p>${IS_LOCAL ? '点一下同步：门户开着就直接抓；没登录就直接打开登录页，登录完自动同步。' : '你现在看的是线上演示版。门户同步要在装了 Chrome 扩展的本机版里用，线上只展示已抓取的内容。'}</p>
+      ${IS_LOCAL ? '<button class="btn" id="syncNowBtn2">一键同步</button>' : ''}
       <button class="btn" id="openPortal" style="margin-top:8px;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.35)">只打开门户页</button>
     </div>
 
@@ -671,7 +680,8 @@ function renderPortal() {
     <p class="note">扩展只读取页面上的标题、日期、部门，只发给本机 127.0.0.1:8787，不经过任何外部服务器。</p>
   `;
   $('#openPortal').addEventListener('click', () => window.open('/portal', '_blank'));
-  $('#syncNowBtn2').addEventListener('click', triggerSync);
+  const sb = $('#syncNowBtn2');
+  if (sb) sb.addEventListener('click', triggerSync);
   $('#gotoPaste').addEventListener('click', () => { state.view = 'wechat'; render(); });
   document.querySelectorAll('.copy').forEach((btn) => {
     btn.addEventListener('click', async () => {
