@@ -103,3 +103,14 @@ node scripts/crawl.mjs --source=tw-hdyg
 4. 部署完成后拿到 `https://xxx.onrender.com`。
 
 注意：免费实例闲置会休眠；磁盘是临时的，重启后数据会重新抓一遍（启动时自动执行一次抓取）。真实使用建议绑定持久磁盘或换 Postgres。
+
+
+## 本机 → 线上 镜像（让两边数据一致）
+
+线上跑在 Render（海外），抓不到学校站点，也接不了门户。所以让**本机当采集机**，把数据推给线上：
+
+1. 本机 `.env` 里配 `MIRROR_URL` 与 `MIRROR_TOKEN`（已生成）；
+2. Render 后台 → Environment → 添加同名 `MIRROR_TOKEN`（值相同）；
+3. 本机每次抓取或门户导入后，会自动 POST 全量数据到线上 `/api/mirror`。
+
+线上只读展示；已读/收藏是设备本地状态，不做镜像。

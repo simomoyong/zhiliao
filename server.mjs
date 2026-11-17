@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import { loadEnv, hasAI, analyze } from './lib/ai.mjs';
 import { runCrawl } from './lib/crawl.mjs';
 import {
-  seedIfEmpty, seedSnapshot, listItems, getItem, markRead, toggleSave, unreadCount,
+  seedIfEmpty, seedSnapshot, listItems, allItemsForMirror, upsertItems, getItem, markRead, toggleSave, unreadCount,
   getPrefs, setPrefs, insertItem, itemExists, titleExists
 } from './lib/db.mjs';
 
@@ -23,6 +23,8 @@ try {
 
 const PORT = Number(process.env.PORT || 8787);
 const PUBLIC = path.join(process.cwd(), 'public');
+const MIRROR_TOKEN = process.env.MIRROR_TOKEN || '';
+const MIRROR_URL = process.env.MIRROR_URL || '';
 const PORTAL_URL = process.env.PORTAL_URL || 'https://portal.chd.edu.cn/qljfwapp/sys/lwPsTzggApp/*default/index.do?qq_aio_chat_type=2#/tzgg';
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -142,6 +144,16 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, ai: hasAI(), items: listItems().length, unread: unreadCount() });
     }
 
+    if (p === '/api/mirror' && req.method === 'POST') {
+      if (!MIRROR_TOKEN || req.headers['x-mirror-token'] !== MIRROR_TOKEN) {
+        return json(res, 401, { error: 'unauthorized' });
+      }
+      const { items = [] } = await readBody(req);
+      const upserted = upsertItems(items);
+      console.log(`[mirror] 收到 ${items.length} 条，写入 ${upserted} 条`);
+      return json(res, 200, { ok: true, upserted });
+    }
+
     if (p === '/api/sources') {
       return json(res, 200, { sources: SOURCES, total: SOURCES.length });
     }
@@ -211,6 +223,7 @@ const server = http.createServer(async (req, res) => {
         });
       }
       console.log(`[portal] 收到 ${items.length} 条，新增 ${added}，用时 ${Date.now() - t0}ms`);
+      if (added > 0) scheduleMirror();
       return json(res, 200, { ok: true, added, skipped, failed, samples });
     }
 
@@ -255,6 +268,31 @@ server.listen(PORT, () => {
   console.log(`AI 模式：${hasAI() ? '已连接 DeepSeek' : '未配置 Key，降级为规则模式'}`);
 });
 
+/* 把本机数据推到线上（有 MIRROR_URL 才启用） */
+let mirrorTimer = null;
+async function mirrorNow() {
+  if (!MIRROR_URL || !MIRROR_TOKEN) return;
+  try {
+    if (new URL(MIRROR_URL).hostname === '127.0.0.1' || new URL(MIRROR_URL).hostname === 'localhost') return;
+  } catch (e) { return; }
+  try {
+    const res = await fetch(`${MIRROR_URL.replace(/\/$/, '')}/api/mirror`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-mirror-token': MIRROR_TOKEN },
+      body: JSON.stringify({ items: allItemsForMirror() })
+    });
+    const r = await res.json();
+    console.log(`[mirror] 推送 ${r.upserted ?? 0} 条到线上`);
+  } catch (e) {
+    console.log('[mirror] 失败：', e.message);
+  }
+}
+function scheduleMirror(delay = 4000) {
+  if (!MIRROR_URL || !MIRROR_TOKEN) return;
+  clearTimeout(mirrorTimer);
+  mirrorTimer = setTimeout(mirrorNow, delay);
+}
+
 /* 每 30 分钟自动抓一次官网通知 */
 let crawling = false;
 async function scheduledCrawl() {
@@ -266,6 +304,7 @@ async function scheduledCrawl() {
     const added = report.reduce((sum, r) => sum + r.added, 0);
     const failed = report.reduce((sum, r) => sum + r.failed, 0);
     console.log(`[crawl] ${new Date().toLocaleString('zh-CN', { hour12: false })} 新增 ${added} 条，失败 ${failed}，用时 ${Date.now() - t0}ms`);
+    if (added > 0) scheduleMirror();
   } catch (e) {
     console.error('[crawl] 失败：', e.message);
   } finally {
