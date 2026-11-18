@@ -260,3 +260,6 @@ body {
 .cat-act { background: #F5EEDF; color: #7A5A24; }
 .act-import { margin-top: 10px; border: 1px solid #E4D3B4; background: #fff; color: #8A5A1E; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; }
 .act-textarea { width: 100%; min-height: 150px; border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-size: 12.5px; line-height: 1.7; font-family: inherit; outline: none; background: #F9FAFC; color: var(--ink); }
+.act-actions { display: flex; gap: 8px; margin-top: 10px; }
+.act-actions .act-import { margin-top: 0; }
+.act-status { font-size: 11.5px; color: #9A7B4F; margin-top: 8px; min-height: 14px; }

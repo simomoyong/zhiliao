@@ -103,7 +103,66 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true;
 });
 
+
+function askQczd(tabId) {
+  return new Promise((resolve) => {
+    chrome.tabs.sendMessage(tabId, { type: 'qczd-scan' }, (res) => {
+      if (chrome.runtime.lastError) return resolve(null);
+      resolve(res || null);
+    });
+  });
+}
+
+async function ensureQczd(tabId) {
+  let r = await askQczd(tabId);
+  if (r) return r;
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['qczd.js'] });
+  } catch (e) { return null; }
+  await new Promise((res) => setTimeout(res, 500));
+  return await askQczd(tabId);
+}
+
 chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
+  if (msg && msg.type === 'qczd-now') {
+    (async () => {
+      try {
+        const tabs = await chrome.tabs.query({ url: 'https://2kt.9xueqi.com/*' });
+        if (!tabs.length) {
+          await chrome.tabs.create({ url: 'https://2kt.9xueqi.com/', active: true });
+          return sendResponse({ ok: true, mode: 'open' });
+        }
+        await focusTab(tabs[0]);
+        let all = [];
+        let samples = [];
+        for (const t of tabs) {
+          const r = await ensureQczd(t.id);
+          if (r && r.items) { all = all.concat(r.items); samples = samples.concat(r.samples || []); }
+        }
+        if (!all.length) {
+          try {
+            await fetch('http://127.0.0.1:8787/api/debug/qczd', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ samples: samples.slice(0, 12), url: tabs[0].url })
+            });
+          } catch (e) {}
+          return sendResponse({ ok: true, mode: 'empty', samples: samples.length });
+        }
+        const res = await fetch('http://127.0.0.1:8787/api/import/activities', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: all })
+        });
+        const out = await res.json();
+        return sendResponse({ ok: true, mode: 'synced', count: out.upserted || 0 });
+      } catch (e) {
+        return sendResponse({ ok: false, error: String(e.message || e) });
+      }
+    })();
+    return true;
+  }
+
   if (!msg || msg.type !== 'sync-now') return;
   (async () => {
     try {

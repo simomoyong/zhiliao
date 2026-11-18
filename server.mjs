@@ -167,6 +167,14 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, upserted });
     }
 
+    if (p === '/api/debug/qczd' && req.method === 'POST') {
+      const data = await readBody(req);
+      fs.mkdirSync('logs', { recursive: true });
+      fs.appendFileSync('logs/qczd-debug.log', JSON.stringify({ at: new Date().toISOString(), ...data }) + '\n');
+      console.log(`[qczd] 收到 ${ (data.samples || []).length } 条页面样本，已存 logs/qczd-debug.log`);
+      return json(res, 200, { ok: true });
+    }
+
     if (p === '/api/activities') {
       return json(res, 200, { items: listActivities() });
     }

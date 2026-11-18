@@ -660,7 +660,11 @@ function renderActs() {
       <div class="big">${total.toFixed(1)}</div>
       <div class="lbl">当前可拿学分（共 ${list.length} 个活动）</div>
       <div class="tip">示例数据 · 登录青春长大后同步真实活动</div>
-      <button class="act-import" id="importAct">＋ 导入活动</button>
+      <div class="act-actions">
+        <button class="act-import" id="syncQczd">一键同步</button>
+        <button class="act-import" id="importAct">＋ 导入活动</button>
+      </div>
+      <div class="act-status" id="actStatus2"></div>
     </div>
     ${list.map((a) => {
       const dl = fmtDeadline(a.deadline);
@@ -679,6 +683,33 @@ function renderActs() {
   `;
   const ib = $('#importAct');
   if (ib) ib.addEventListener('click', openActImport);
+  const sb = $('#syncQczd');
+  if (sb) sb.addEventListener('click', triggerQczd);
+}
+
+function triggerQczd() {
+  const st = $('#actStatus2');
+  if (!IS_LOCAL) { st.textContent = '线上演示版不支持抓取，请在本机使用'; return; }
+  st.textContent = '正在读取青春长大页面…';
+  let answered = false;
+  try {
+    if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
+      chrome.runtime.sendMessage(EXT_ID, { type: 'qczd-now' }, (res) => {
+        answered = true;
+        if (chrome.runtime.lastError || !res) {
+          st.textContent = '没找到扩展。请到 chrome://extensions 刷新扩展后重试';
+          return;
+        }
+        if (res.mode === 'open') { st.textContent = '已打开青春长大，登录并进入活动页后，再点一次「一键同步」'; return; }
+        if (res.mode === 'empty') { st.textContent = `页面里没识别到活动（记下 ${res.samples || 0} 段样本，我看看结构）`; return; }
+        st.textContent = `同步完成：${res.count} 个活动`;
+        setTimeout(() => load(), 600);
+      });
+      setTimeout(() => { if (!answered) st.textContent = '扩展没有响应，刷新扩展后再试'; }, 4000);
+      return;
+    }
+  } catch (e) {}
+  st.textContent = '这个功能需要 Chrome 扩展（本机版）';
 }
 
 function openActImport() {

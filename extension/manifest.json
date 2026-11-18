@@ -10,8 +10,10 @@
     "tabs"
   ],
   "host_permissions": [
-    "https://portal.chd.edu.cn/*",
-    "http://127.0.0.1:8787/*"
+    "http://127.0.0.1:8787/*",
+    "http://2kt.9xueqi.com/*",
+    "https://2kt.9xueqi.com/*",
+    "https://portal.chd.edu.cn/*"
   ],
   "content_scripts": [
     {
@@ -20,6 +22,17 @@
       ],
       "js": [
         "content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://2kt.9xueqi.com/*",
+        "http://2kt.9xueqi.com/*"
+      ],
+      "js": [
+        "qczd.js"
       ],
       "run_at": "document_idle",
       "all_frames": true
