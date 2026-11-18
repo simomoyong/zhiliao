@@ -5,12 +5,14 @@ import crypto from 'node:crypto';
 import { loadEnv, hasAI, analyze } from './lib/ai.mjs';
 import { runCrawl } from './lib/crawl.mjs';
 import {
-  seedIfEmpty, seedSnapshot, listItems, allItemsForMirror, upsertItems, getItem, markRead, toggleSave, unreadCount,
+  seedIfEmpty, seedSnapshot, seedActivities, listActivities, insertActivities,
+  listItems, allItemsForMirror, upsertItems, getItem, markRead, toggleSave, unreadCount,
   getPrefs, setPrefs, insertItem, itemExists, titleExists
 } from './lib/db.mjs';
 
 loadEnv();
 seedIfEmpty();
+seedActivities();
 const snapshotAdded = seedSnapshot();
 if (snapshotAdded) console.log(`已从快照导入 ${snapshotAdded} 条真实通知`);
 
@@ -71,7 +73,7 @@ function icsEscape(s = '') {
   return String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
 }
 
-function toICS(items) {
+function toICS(items, acts = []) {
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//zhiliao//campus notice//CN', 'CALSCALE:GREGORIAN'];
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   for (const it of items) {
@@ -85,6 +87,17 @@ function toICS(items) {
     if (it.url) lines.push(`URL:${it.url}`);
     lines.push('BEGIN:VALARM', 'TRIGGER:-P1D', 'ACTION:DISPLAY', 'DESCRIPTION:明天截止', 'END:VALARM');
     lines.push('BEGIN:VALARM', 'TRIGGER:-PT2H', 'ACTION:DISPLAY', 'DESCRIPTION:2 小时后截止', 'END:VALARM');
+    lines.push('END:VEVENT');
+  }
+  for (const a of acts) {
+    if (!a.deadline) continue;
+    const d = new Date(a.deadline);
+    if (Number.isNaN(d.getTime())) continue;
+    const dt = d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    lines.push('BEGIN:VEVENT', `UID:zhiliao-act-${a.id}@local`, `DTSTAMP:${stamp}`, `DTSTART:${dt}`,
+      `SUMMARY:${icsEscape(`二课截止：${a.title}（${a.block || ''} +${a.credits || 0} 学分）`)}`);
+    if (a.location) lines.push(`LOCATION:${icsEscape(a.location)}`);
+    lines.push('BEGIN:VALARM', 'TRIGGER:-P1D', 'ACTION:DISPLAY', 'DESCRIPTION:明天截止', 'END:VALARM');
     lines.push('END:VEVENT');
   }
   lines.push('END:VCALENDAR');
@@ -154,6 +167,20 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, upserted });
     }
 
+    if (p === '/api/activities') {
+      return json(res, 200, { items: listActivities() });
+    }
+
+    if (p === '/api/import/activities' && req.method === 'POST') {
+      const { items = [] } = await readBody(req);
+      const rows = items.map((a) => ({
+        ...a,
+        ext_id: a.ext_id || crypto.createHash('sha1').update(`${a.title}|${a.start_at || ''}|${a.org || ''}`).digest('hex').slice(0, 16)
+      }));
+      const n = insertActivities(rows);
+      return json(res, 200, { ok: true, upserted: n });
+    }
+
     if (p === '/api/sources') {
       return json(res, 200, { sources: SOURCES, total: SOURCES.length });
     }
@@ -187,7 +214,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/ics') {
       const items = listItems();
       res.writeHead(200, { 'Content-Type': 'text/calendar; charset=utf-8', 'Content-Disposition': 'attachment; filename="zhiliao.ics"' });
-      return res.end(toICS(items));
+      return res.end(toICS(items, listActivities()));
     }
 
 

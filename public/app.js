@@ -10,6 +10,7 @@ const state = {
   srcGroup: '全部',
   srcQ: '',
   portal: { lastSync: '', total: 0, url: '' },
+  acts: [],
   feed: localStorage.getItem('zl_feed') || 'subs'
 };
 
@@ -53,6 +54,7 @@ async function load() {
   state.prefs = data.prefs;
   try { state.health = await api('/api/health'); } catch {}
   try { state.portal = await api('/api/portal-status'); } catch {}
+  try { state.acts = (await api('/api/activities')).items || []; } catch {}
   render();
 }
 
@@ -637,6 +639,125 @@ function pollPortal(times = 10) {
   }, 500);
 }
 
+function fmtRange(a) {
+  if (!a.start_at) return '';
+  const d = new Date(a.start_at);
+  const t = `${d.getMonth() + 1} 月 ${d.getDate()} 日 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  if (!a.end_at) return t;
+  const e = new Date(a.end_at);
+  return `${t}–${String(e.getHours()).padStart(2, '0')}:${String(e.getMinutes()).padStart(2, '0')}`;
+}
+
+function renderActs() {
+  const list = state.acts || [];
+  const total = list.reduce((sum, a) => sum + (Number(a.credits) || 0), 0);
+  if (!list.length) {
+    $('#main').innerHTML = '<div class="empty">还没有第二课堂活动<br />登录青春长大后可同步</div>';
+    return;
+  }
+  $('#main').innerHTML = `
+    <div class="act-hero">
+      <div class="big">${total.toFixed(1)}</div>
+      <div class="lbl">当前可拿学分（共 ${list.length} 个活动）</div>
+      <div class="tip">示例数据 · 登录青春长大后同步真实活动</div>
+      <button class="act-import" id="importAct">＋ 导入活动</button>
+    </div>
+    ${list.map((a) => {
+      const dl = fmtDeadline(a.deadline);
+      return `<article class="card act" data-act="${a.id}">
+        <div class="card-head">
+          <span class="cat cat-act">${esc(a.block || '未分类')}</span>
+          <span class="credits">+${Number(a.credits || 0).toFixed(1)} 学分</span>
+        </div>
+        <h3 class="title">${esc(a.title)}</h3>
+        <p class="summary">${esc(a.org || '')}${a.location ? ' · ' + esc(a.location) : ''}<br />${esc(fmtRange(a))}</p>
+        <div class="card-foot">
+          ${dl.text ? `<span class="deadline ${dl.cls}">报名 ${esc(dl.text)}</span>` : '<span>常年可报</span>'}
+        </div>
+      </article>`;
+    }).join('')}
+  `;
+  const ib = $('#importAct');
+  if (ib) ib.addEventListener('click', openActImport);
+}
+
+function openActImport() {
+  $('#sheetPanel').innerHTML = `
+    <div class="sheet-bar"></div>
+    <h2 class="d-title">导入第二课堂活动</h2>
+    <p class="note" style="margin-top:0">在青春长大活动页选中活动卡片文字（或整页 ⌘A），粘贴到这里。能识别标题、板块、学分、时间地点与截止。</p>
+    <textarea id="actText" class="act-textarea" placeholder="示例：\n非遗剪纸体验工作坊\n板块：文体活动　学分：0.2\n11 月 26 日 15:00 艺术教育中心\n报名截止：11 月 25 日 17:00"></textarea>
+    <div class="import-status" id="actStatus"></div>
+    <div class="d-actions"><button class="btn primary" id="actDo">识别并导入</button></div>
+  `;
+  $('#sheet').classList.add('open');
+  $('#sheet').setAttribute('aria-hidden', 'false');
+  $('#actDo').addEventListener('click', doActImport);
+}
+
+const BLOCKS = ['思想成长', '志愿公益', '创新创业', '文体活动', '技能特长', '实践实习', '其他'];
+
+function parseActs(text) {
+  const lines = String(text).split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+  const out = [];
+  for (const line of lines) {
+    if (!/学分/.test(line) && !BLOCKS.some((b) => line.includes(b))) continue;
+    let title = line.split(/[｜|]/)[0];
+    title = title.split(new RegExp(BLOCKS.join('|')))[0];
+    title = title.replace(/\d+(?:\.\d+)?\s*学分.*$/, '').replace(/\d{1,2}\s*月.*$/, '');
+    title = title.replace(/\s+/g, ' ').trim().slice(0, 60);
+    const credits = (line.match(/(\d+(?:\.\d+)?)\s*学分/) || [])[1];
+    if (!credits) continue;
+    const block = BLOCKS.find((b) => line.includes(b)) || '';
+    const dm = line.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*(\d{1,2})[:：](\d{2})/);
+    out.push({
+      title: title || '未命名活动',
+      block, credits: Number(credits),
+      start_at: dm ? `2026-${String(dm[1]).padStart(2, '0')}-${String(dm[2]).padStart(2, '0')}T${String(dm[3]).padStart(2, '0')}:${dm[4]}:00+08:00` : '',
+      location: (line.match(/地点[:：]?\s*([^｜|\s]{2,20})/) || [])[1] || '',
+      deadline: '', org: '', source: '第二课堂 · 手动导入'
+    });
+  }
+  return out;
+}
+
+async function doActImport() {
+  const st = $('#actStatus');
+  const items = parseActs($('#actText').value);
+  if (!items.length) { st.textContent = '没识别到活动。每行需包含「学分」，例如：非遗剪纸 0.2 学分'; return; }
+  st.textContent = `识别到 ${items.length} 个活动，正在导入…`;
+  try {
+    const r = await api('/api/import/activities', { method: 'POST', body: JSON.stringify({ items }) });
+    st.textContent = `导入完成：${r.upserted} 个`;
+    setTimeout(() => { closeSheet(); load(); }, 700);
+  } catch (e) { st.textContent = '导入失败：' + e.message; }
+}
+
+function openAct(id) {
+  const a = (state.acts || []).find((x) => x.id === Number(id));
+  if (!a) return;
+  $('#sheetPanel').innerHTML = `
+    <div class="sheet-bar"></div>
+    <div class="card-head">
+      <span class="cat cat-act">${esc(a.block || '未分类')}</span>
+      <span class="credits">+${Number(a.credits || 0).toFixed(1)} 学分</span>
+    </div>
+    <h2 class="d-title">${esc(a.title)}</h2>
+    <div class="panel" style="padding:0 14px">
+      <div class="kv"><div class="k">活动时间</div><div class="v">${esc(fmtRange(a))}</div></div>
+      ${a.location ? `<div class="kv"><div class="k">地点</div><div class="v">${esc(a.location)}</div></div>` : ''}
+      <div class="kv"><div class="k">报名截止</div><div class="v">${a.deadline ? esc(new Date(a.deadline).toLocaleString('zh-CN', { hour12: false })) : '未标注'}</div></div>
+      <div class="kv"><div class="k">主办</div><div class="v">${esc(a.org || '')}</div></div>
+      <div class="kv"><div class="k">来源</div><div class="v">${esc(a.source || '第二课堂')}</div></div>
+    </div>
+    <div class="d-actions"><button class="btn primary" id="actIcs">加入日历</button></div>
+    <p class="note">学分与板块以青春长大平台为准；这里只做提醒。</p>
+  `;
+  $('#sheet').classList.add('open');
+  $('#sheet').setAttribute('aria-hidden', 'false');
+  $('#actIcs').addEventListener('click', () => { window.location.href = '/api/ics'; });
+}
+
 function renderPortal() {
   const st = portalStatus();
   const path = '/Users/smm/Desktop/Harness try/zhiliao/app/extension';
@@ -696,10 +817,11 @@ function renderPortal() {
 
 function render() {
   renderUnread();
-  document.querySelector('.toolbar').style.display = (state.view === 'wechat' || state.view === 'portal') ? 'none' : '';
+  document.querySelector('.toolbar').style.display = (state.view === 'wechat' || state.view === 'portal' || state.view === 'acts') ? 'none' : '';
   renderChips();
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t.dataset.view === state.view));
   if (state.view === 'home') renderHome();
+  else if (state.view === 'acts') renderActs();
   else if (state.view === 'portal') renderPortal();
   else if (state.view === 'wechat') renderSources();
   else if (state.view === 'subs') renderSubs();
@@ -714,6 +836,8 @@ document.addEventListener('click', (e) => {
   if (feed) { state.feed = feed.dataset.feed; localStorage.setItem('zl_feed', state.feed); render(); return; }
   if (e.target.closest('#goPortal')) { state.view = 'portal'; render(); return; }
   if (e.target.closest('#syncNowBtn')) { triggerSync(); return; }
+  const act = e.target.closest('.act');
+  if (act && act.dataset.act) openAct(act.dataset.act);
   const src = e.target.closest('.src-item');
   if (src && src.dataset.src) openSource(src.dataset.src);
   const chip = e.target.closest('.chip');

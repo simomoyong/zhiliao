@@ -250,3 +250,13 @@ body {
 .ob-chip.on { background: var(--navy); border-color: var(--navy); color: #fff; font-weight: 600; }
 .ob-card .btn { margin-top: 20px; }
 .ob-skip { display: block; width: 100%; border: 0; background: none; color: var(--faint); font-size: 12px; padding: 12px 0 0; font-family: inherit; cursor: pointer; }
+
+/* 第二课堂 */
+.act-hero { background: linear-gradient(135deg,#F4EFE3,#FBF8F1); border: 1px solid #EEE3CF; border-radius: 16px; padding: 16px 18px; margin: 4px 0 14px; }
+.act-hero .big { font-size: 34px; font-weight: 800; color: #8A5A1E; line-height: 1; }
+.act-hero .lbl { font-size: 12px; color: #9A7B4F; margin-top: 6px; }
+.act-hero .tip { font-size: 11px; color: #B39B77; margin-top: 8px; }
+.credits { margin-left: auto; font-size: 12px; font-weight: 700; color: #8A5A1E; background: #FBF3E4; padding: 2px 8px; border-radius: 6px; }
+.cat-act { background: #F5EEDF; color: #7A5A24; }
+.act-import { margin-top: 10px; border: 1px solid #E4D3B4; background: #fff; color: #8A5A1E; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; }
+.act-textarea { width: 100%; min-height: 150px; border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-size: 12.5px; line-height: 1.7; font-family: inherit; outline: none; background: #F9FAFC; color: var(--ink); }
