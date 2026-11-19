@@ -4,9 +4,10 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { loadEnv, hasAI, analyze } from './lib/ai.mjs';
 import { runCrawl } from './lib/crawl.mjs';
+import { sendPush, publicKey } from './lib/push.mjs';
 import {
   seedIfEmpty, seedSnapshot, seedActivities, listActivities, insertActivities, getProfile, setProfile,
-  listItems, allItemsForMirror, upsertItems, getItem, markRead, toggleSave, unreadCount,
+  listItems, allItemsForMirror, upsertItems, addPushSub, listPushSubs, removePushSub, getItem, markRead, toggleSave, unreadCount,
   getPrefs, setPrefs, insertItem, itemExists, titleExists
 } from './lib/db.mjs';
 
@@ -175,6 +176,33 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true });
     }
 
+    if (p === '/api/push/public-key') {
+      return json(res, 200, { key: publicKey() });
+    }
+
+    if (p === '/api/push/subscribe' && req.method === 'POST') {
+      const { subscription } = await readBody(req);
+      addPushSub(subscription);
+      console.log('[push] 新订阅', subscription && subscription.endpoint ? subscription.endpoint.slice(0, 60) : '');
+      return json(res, 200, { ok: true });
+    }
+
+    if (p === '/api/push/unsubscribe' && req.method === 'POST') {
+      const { endpoint } = await readBody(req);
+      return json(res, 200, { ok: true, removed: removePushSub(endpoint) });
+    }
+
+    if (p === '/api/push/test' && req.method === 'POST') {
+      const subs = listPushSubs();
+      const results = [];
+      for (const sub of subs) {
+        const r = await sendPush(sub);
+        if (!r.ok && (r.status === 404 || r.status === 410)) removePushSub(sub.endpoint);
+        results.push(r);
+      }
+      return json(res, 200, { ok: true, sent: subs.length, results });
+    }
+
     if (p === '/api/profile' && req.method === 'GET') {
       return json(res, 200, getProfile());
     }
@@ -314,6 +342,19 @@ server.listen(PORT, () => {
   console.log(`AI 模式：${hasAI() ? '已连接 DeepSeek' : '未配置 Key，降级为规则模式'}`);
 });
 
+/* 有新通知时推送到订阅设备 */
+async function notifyPush(text = '有新的校园通知') {
+  const subs = listPushSubs();
+  if (!subs.length) return;
+  let ok = 0;
+  for (const sub of subs) {
+    const r = await sendPush(sub);
+    if (r.ok) ok += 1;
+    else if (r.status === 404 || r.status === 410) removePushSub(sub.endpoint);
+  }
+  console.log(`[push] ${text}：${ok}/${subs.length} 成功`);
+}
+
 /* 把本机数据推到线上（有 MIRROR_URL 才启用） */
 let mirrorTimer = null;
 async function mirrorNow() {
@@ -350,7 +391,7 @@ async function scheduledCrawl() {
     const added = report.reduce((sum, r) => sum + r.added, 0);
     const failed = report.reduce((sum, r) => sum + r.failed, 0);
     console.log(`[crawl] ${new Date().toLocaleString('zh-CN', { hour12: false })} 新增 ${added} 条，失败 ${failed}，用时 ${Date.now() - t0}ms`);
-    if (added > 0) scheduleMirror();
+    if (added > 0) { scheduleMirror(); notifyPush(`官网新增 ${added} 条`); }
   } catch (e) {
     console.error('[crawl] 失败：', e.message);
   } finally {

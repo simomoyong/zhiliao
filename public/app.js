@@ -158,6 +158,73 @@ function descOf(c) {
   }[c] || '';
 }
 
+function b64ToU8(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+async function currentSub() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  const reg = await navigator.serviceWorker.ready;
+  return await reg.pushManager.getSubscription();
+}
+
+async function refreshPushStatus() {
+  const el = document.getElementById('pushStatus');
+  if (!el) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    el.textContent = '当前浏览器不支持 Web Push';
+    return;
+  }
+  try {
+    const sub = await Promise.race([
+      currentSub(),
+      new Promise((r) => setTimeout(() => r(null), 2000))
+    ]);
+    el.textContent = sub ? '已开启，新通知会弹系统通知' : '未开启（点右侧开启并允许通知）';
+    const btn = document.getElementById('pushBtn');
+    if (btn) btn.textContent = sub ? '已开启' : '开启';
+  } catch (e) {
+    el.textContent = '检查失败：' + e.message;
+  }
+}
+
+async function enablePush() {
+  const el = document.getElementById('pushStatus');
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      el.textContent = '这个浏览器不支持 Web Push，换 Chrome 试试';
+      return;
+    }
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { el.textContent = '你拒绝了通知权限，可在浏览器设置里重新允许'; return; }
+    const reg = await navigator.serviceWorker.ready;
+    const { key } = await api('/api/push/public-key');
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(key) });
+    await api('/api/push/subscribe', { method: 'POST', body: JSON.stringify({ subscription: sub.toJSON() }) });
+    el.textContent = '已开启，点「测试」发一条看看';
+    const btn = document.getElementById('pushBtn');
+    if (btn) btn.textContent = '已开启';
+  } catch (e) {
+    el.textContent = '开启失败：' + e.message;
+  }
+}
+
+async function testPush() {
+  const el = document.getElementById('pushStatus');
+  el.textContent = '正在发送测试通知…';
+  try {
+    const r = await api('/api/push/test', { method: 'POST' });
+    el.textContent = `已发送 ${r.sent} 条（成功 ${(r.results || []).filter((x) => x.ok).length}）`;
+  } catch (e) {
+    el.textContent = '发送失败：' + e.message;
+  }
+}
+
 function renderMe() {
   const ai = state.health.ai;
   $('#main').innerHTML = `
@@ -183,7 +250,10 @@ function renderMe() {
     <div class="section-title">提醒</div>
     <div class="panel">
       <div class="row" id="icsRow"><div class="txt"><b>导出日历</b><span>把截止时间写进手机日历，系统原生提醒</span></div><span style="color:var(--faint)">›</span></div>
-      <div class="row"><div class="txt"><b>锁屏推送</b><span>PWA 版接入后可用（Android / iOS 16.4+）</span></div><span class="cat cat-教务">待接入</span></div>
+      <div class="row"><div class="txt"><b>锁屏通知</b><span id="pushStatus">检查中…</span></div>
+        <button class="btn primary" id="pushBtn" style="width:auto;padding:8px 14px;font-size:12px">开启</button></div>
+      <div class="row"><div class="txt"><b>发送测试通知</b><span>验证系统通知能不能弹出来</span></div>
+        <button class="btn ghost" id="pushTest" style="width:auto;padding:8px 14px;font-size:12px">测试</button></div>
     </div>
 
     <div class="section-title">公众号文章</div>
@@ -200,6 +270,12 @@ function renderMe() {
     <p class="note">本页为《人工智能导论》期末作业原型，数据为示例，实际界面以部署版本为准。</p>
   `;
   $('#icsRow').addEventListener('click', () => { window.location.href = '/api/ics'; });
+  const pushBtn = $('#pushBtn');
+  if (pushBtn) {
+    pushBtn.addEventListener('click', enablePush);
+    $('#pushTest').addEventListener('click', testPush);
+    refreshPushStatus();
+  }
   $('#importRow').addEventListener('click', importFlow);
 }
 
