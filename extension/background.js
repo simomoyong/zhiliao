@@ -127,9 +127,9 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === 'qczd-now') {
     (async () => {
       try {
-        const tabs = await chrome.tabs.query({ url: 'https://2kt.9xueqi.com/*' });
+        const tabs = await chrome.tabs.query({ url: ['https://2kt.9xueqi.com/*', 'https://win.9xueqi.com/*'] });
         if (!tabs.length) {
-          await chrome.tabs.create({ url: 'https://2kt.9xueqi.com/', active: true });
+          await chrome.tabs.create({ url: 'https://win.9xueqi.com/#/searthSchool', active: true });
           return sendResponse({ ok: true, mode: 'open' });
         }
         await focusTab(tabs[0]);

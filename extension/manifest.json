@@ -12,8 +12,10 @@
   "host_permissions": [
     "http://127.0.0.1:8787/*",
     "http://2kt.9xueqi.com/*",
+    "http://win.9xueqi.com/*",
     "https://2kt.9xueqi.com/*",
-    "https://portal.chd.edu.cn/*"
+    "https://portal.chd.edu.cn/*",
+    "https://win.9xueqi.com/*"
   ],
   "content_scripts": [
     {
@@ -28,8 +30,10 @@
     },
     {
       "matches": [
+        "http://2kt.9xueqi.com/*",
+        "http://win.9xueqi.com/*",
         "https://2kt.9xueqi.com/*",
-        "http://2kt.9xueqi.com/*"
+        "https://win.9xueqi.com/*"
       ],
       "js": [
         "qczd.js"
