@@ -7,6 +7,8 @@
   const DEPT = /(教务处|学生工作部|学生处|学工部|团委|就业指导中心|就业|研究生院|图书馆|后勤|保卫处|档案馆|宣传部|国际处|财务处|实验室|信息网络|学院)/;
   const sent = new Set();
   let timer = null;
+  let tick = null;
+  let dead = false;
 
   const pad = (n) => String(n).padStart(2, '0');
   function dateOf(s) {
@@ -49,18 +51,27 @@
   }
 
   function scan(manual) {
+    if (dead) return;
+    if (!chrome.runtime || !chrome.runtime.id) { dead = true; clearInterval(tick); return; }
     const probe = location.href + document.title;
     if (!/lwPsTzggApp|tzgg|通知公告/i.test(probe) && !manual) return;
     const all = collect();
     const items = all.filter((x) => !sent.has(x.title));
     if (!items.length && !manual) return;   // 自动扫描没新内容就不打扰
     items.forEach((x) => sent.add(x.title));
-    chrome.runtime.sendMessage({ type: 'sync', items, manual: !!manual, page: location.href }, (res) => {
-      if (chrome.runtime.lastError) return;
-      if (res && (res.added || res.error)) {
-        console.log('[知了] 同步结果', res);
-      }
-    });
+    try {
+      chrome.runtime.sendMessage({ type: 'sync', items, manual: !!manual, page: location.href }, (res) => {
+        const err = chrome.runtime.lastError;
+        if (err) {
+          if (/invalidated/i.test(err.message || '')) { dead = true; clearInterval(tick); }
+          return;
+        }
+        if (res && (res.added || res.error)) console.log('[知了] 同步结果', res);
+      });
+    } catch (e) {
+      dead = true;
+      if (tick) clearInterval(tick);
+    }
   }
 
   function debouncedScan() {
@@ -73,6 +84,6 @@
   });
 
   setTimeout(() => scan(false), 400);
-  setInterval(() => scan(false), 15000);
+  tick = setInterval(() => scan(false), 15000);
   new MutationObserver(debouncedScan).observe(document.documentElement, { childList: true, subtree: true });
 })();
