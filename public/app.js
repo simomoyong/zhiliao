@@ -717,6 +717,59 @@ function renderActs() {
   `;
 }
 
+function triggerQczd() {
+  const st = $('#actStatus2');
+  if (!IS_LOCAL) { st.textContent = '线上演示版不支持抓取，请在本机使用'; return; }
+  st.textContent = '正在读取青春长大页面（会自动滚到底加载全部）…';
+  let answered = false;
+  try {
+    if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
+      chrome.runtime.sendMessage(EXT_ID, { type: 'qczd-now' }, (res) => {
+        answered = true;
+        if (chrome.runtime.lastError || !res) {
+          st.textContent = '扩展连接失效：请刷新本页（⌘R）后重试；仍不行就到 chrome://extensions 看有没有报错';
+          return;
+        }
+        if (res.mode === 'open') { st.textContent = '已打开青春长大，登录并进入活动页后，再点一次「一键同步」'; return; }
+        if (res.mode === 'empty') { st.textContent = `页面里没识别到活动（记下 ${res.samples || 0} 段样本，我看看结构）`; return; }
+        st.textContent = `同步完成：${res.count} 个活动`;
+        setTimeout(() => load(), 600);
+      });
+      setTimeout(() => { if (!answered) st.textContent = '扩展没有响应：先刷新本页（⌘R）再试'; }, 6000);
+      return;
+    }
+  } catch (e) {
+    st.textContent = '扩展连接失效：请刷新本页（⌘R）后重试';
+    return;
+  }
+  st.textContent = '这个功能需要 Chrome 扩展（本机版）';
+}
+
+function triggerProfile() {
+  const st = $('#actStatus2');
+  if (!IS_LOCAL) { st.textContent = '线上演示版不支持'; return; }
+  st.textContent = '正在读取青春长大的积分…';
+  let answered = false;
+  try {
+    chrome.runtime.sendMessage(EXT_ID, { type: 'qczd-profile' }, (res) => {
+      answered = true;
+      if (chrome.runtime.lastError || !res || !res.ok) {
+        st.textContent = chrome.runtime.lastError
+          ? '扩展连接失效：请刷新本页（⌘R）后重试'
+          : '没读到。请先在青春长大「二课成绩」页停留，再回来点一次';
+        return;
+      }
+      const p = res.profile || {};
+      st.textContent = `已读取：劳育 ${p.labor || 0} / 美育 ${p.aesthetic || 0} / 创新 ${p.innovation || 0}`;
+      state.profile = p;
+      setTimeout(() => load(), 500);
+    });
+    setTimeout(() => { if (!answered) st.textContent = '扩展没有响应：先刷新本页（⌘R）再试'; }, 6000);
+  } catch (e) {
+    st.textContent = '扩展连接失效：请刷新本页（⌘R）后重试';
+  }
+}
+
 function openActImport() {
   $('#sheetPanel').innerHTML = `
     <div class="sheet-bar"></div>
