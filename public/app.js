@@ -191,7 +191,7 @@ function renderMe() {
     <div class="panel">
       <div class="row"><div class="txt"><b>数据来源</b><span>学校官网公开页面 + 用户主动导入</span></div></div>
       <div class="row"><div class="txt"><b>隐私</b><span>不采集成绩、课表与个人身份信息</span></div></div>
-      <div class="row"><div class="txt"><b>版本</b><span>知了 v0.1 · 课程原型</span></div></div>
+      <div class="row"><div class="txt"><b>版本</b><span>知了 v0.4 · 课程原型</span></div></div>
     </div>
     <p class="note">本页为《人工智能导论》期末作业原型，数据为示例，实际界面以部署版本为准。</p>
   `;
