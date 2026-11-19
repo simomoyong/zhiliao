@@ -87,9 +87,13 @@ function renderHome() {
     if (go) go.addEventListener('click', () => { state.view = 'subs'; render(); });
     return;
   }
-  const cards = list.map((it) => {
+  const now = Date.now();
+  const isExp = (it) => it.deadline && new Date(it.deadline).getTime() < now;
+  const ordered = [...list.filter((i) => !isExp(i)), ...list.filter((it) => isExp(it))];
+  const cards = ordered.map((it) => {
     const dl = fmtDeadline(it.deadline);
-    return `<article class="card ${it.is_read ? 'read' : ''}" data-id="${it.id}">
+    const exp = isExp(it);
+    return `<article class="card ${it.is_read ? 'read' : ''} ${exp ? 'expired' : ''}" data-id="${it.id}">
       <div class="card-head">
         <span class="cat cat-${it.category}">${esc(it.category)}</span>
         <span class="src">${esc(it.source)}</span>
@@ -98,7 +102,7 @@ function renderHome() {
       <p class="summary">${esc(it.summary || '')}</p>
       <div class="card-foot">
         ${it.is_read ? '' : '<span class="dot"></span>'}
-        ${dl.text ? `<span class="deadline ${dl.cls}">${esc(dl.text)}</span>` : '<span>未标注截止</span>'}
+        ${exp ? '<span class="deadline over">已截止</span>' : (dl.text ? `<span class="deadline ${dl.cls}">${esc(dl.text)}</span>` : '<span>未标注截止</span>')}
         <span style="margin-left:auto">${it.source_type === '公众号' ? '公众号' : '官网'}</span>
       </div>
     </article>`;
@@ -107,7 +111,7 @@ function renderHome() {
   const seed = list.length - real;
   $('#main').innerHTML = `
     ${switcher}
-    <div class="notice-tip"><b>${real ? '真实抓取' : '示例数据'}</b> · 共 ${list.length} 条${real && seed ? `（真实 ${real} / 示例 ${seed}）` : ''}，按截止时间排序</div>
+    <div class="notice-tip"><b>${real ? '真实抓取' : '示例数据'}</b> · 共 ${list.length} 条${real && seed ? `（真实 ${real} / 示例 ${seed}）` : ''}，进行中优先、已截止置底</div>
     ${syncBar()}
     ${cards}`;
 }

@@ -94,12 +94,18 @@
   }
 
   function collectProfile() {
-    const text = (document.body.innerText || '').replace(/\s+/g, ' ');
+    // 先把日期从文本里去掉，否则“劳育 2026.11”会把年份当成积分
+    let text = (document.body.innerText || '').replace(/\s+/g, ' ');
+    text = text.replace(/20\d{2}[.\-/年]\d{1,2}[.\-/月]\d{1,2}日?/g, ' ');
     const out = {};
     const map = { 劳育: 'labor', 美育: 'aesthetic', 创新: 'innovation' };
     for (const [cn, key] of Object.entries(map)) {
-      const m = text.match(new RegExp(cn + '[^0-9]{0,12}(\\d+(?:\\.\\d+)?)'));
-      if (m) out[key] = Number(m[1]);
+      const re = new RegExp(cn + '[^0-9]{0,10}(\\d{1,3}(?:\\.\\d+)?)', 'g');
+      let m;
+      while ((m = re.exec(text))) {
+        const v = Number(m[1]);
+        if (v >= 0 && v < 100) { out[key] = v; break; }
+      }
     }
     const t = text.match(/(\d+(?:\.\d+)?)\s*(?:获得成绩|总积分|我的积分)/);
     if (t) out.total = Number(t[1]);

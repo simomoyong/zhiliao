@@ -273,3 +273,7 @@ body {
 .act-full { opacity: .55; }
 .act-full .title { text-decoration: line-through; text-decoration-color: #C9B79A; }
 .badge-full { margin-left: auto; font-size: 11px; font-weight: 700; color: #8C6A44; background: #EFE6D6; padding: 2px 8px; border-radius: 6px; }
+
+/* 已截止通知置底并变灰 */
+.card.expired { opacity: .5; }
+.card.expired .title { text-decoration: line-through; text-decoration-color: #B9C4CE; color: #7C8A97; }
