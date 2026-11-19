@@ -715,12 +715,6 @@ function renderActs() {
       </article>`;
     }).join('') : '<div class="empty">这个类别下还没有活动</div>'}
   `;
-  const ib = $('#importAct');
-  if (ib) ib.addEventListener('click', openActImport);
-  const sb = $('#syncQczd');
-  if (sb) sb.addEventListener('click', triggerQczd);
-  const pb = $('#syncProfile');
-  if (pb) pb.addEventListener('click', triggerProfile);
 }
 
 function openActImport() {
@@ -880,6 +874,9 @@ document.addEventListener('click', (e) => {
   if (feed) { state.feed = feed.dataset.feed; localStorage.setItem('zl_feed', state.feed); render(); return; }
   if (e.target.closest('#goPortal')) { state.view = 'portal'; render(); return; }
   if (e.target.closest('#syncNowBtn')) { triggerSync(); return; }
+  if (e.target.closest('#syncQczd')) { triggerQczd(); return; }
+  if (e.target.closest('#syncProfile')) { triggerProfile(); return; }
+  if (e.target.closest('#importAct')) { openActImport(); return; }
   const act = e.target.closest('.act');
   if (act && act.dataset.act) openAct(act.dataset.act);
   const src = e.target.closest('.src-item');
