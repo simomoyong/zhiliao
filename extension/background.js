@@ -132,19 +132,23 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
           await chrome.tabs.create({ url: 'https://win.9xueqi.com/#/searthSchool', active: true });
           return sendResponse({ ok: true, mode: 'open' });
         }
-        await focusTab(tabs[0]);
         let all = [];
         let samples = [];
+        let xhr = [];
         for (const t of tabs) {
           const r = await ensureQczd(t.id);
-          if (r && r.items) { all = all.concat(r.items); samples = samples.concat(r.samples || []); }
+          if (r && r.items) {
+            all = all.concat(r.items);
+            samples = samples.concat(r.samples || []);
+            xhr = xhr.concat(r.xhr || []);
+          }
         }
         if (!all.length) {
           try {
             await fetch('http://127.0.0.1:8787/api/debug/qczd', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ samples: samples.slice(0, 12), url: tabs[0].url })
+              body: JSON.stringify({ samples: samples.slice(0, 15), xhr: xhr.slice(0, 4), url: tabs[0].url })
             });
           } catch (e) {}
           return sendResponse({ ok: true, mode: 'empty', samples: samples.length });
