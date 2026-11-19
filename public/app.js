@@ -11,6 +11,7 @@ const state = {
   srcQ: '',
   portal: { lastSync: '', total: 0, url: '' },
   acts: [],
+  actBlock: '全部',
   feed: localStorage.getItem('zl_feed') || 'subs'
 };
 
@@ -648,68 +649,59 @@ function fmtRange(a) {
   return `${t}–${String(e.getHours()).padStart(2, '0')}:${String(e.getMinutes()).padStart(2, '0')}`;
 }
 
+function actStats() {
+  const out = { 劳育: 0, 美育: 0, 创新: 0 };
+  for (const a of state.acts || []) {
+    if (a.full || a.status === '已结束') continue;
+    if (out[a.block] !== undefined) out[a.block] += Number(a.credits) || 0;
+  }
+  return out;
+}
+
 function renderActs() {
-  const list = state.acts || [];
-  const total = list.reduce((sum, a) => sum + (Number(a.credits) || 0), 0);
-  if (!list.length) {
+  const all = state.acts || [];
+  const stats = actStats();
+  const blocks = ['全部', '劳育', '美育', '创新'];
+  const list = (state.actBlock === '全部' ? all : all.filter((a) => a.block === state.actBlock));
+  const sorted = [...list].sort((a, b) => {
+    const fa = a.full ? 1 : 0;
+    const fb = b.full ? 1 : 0;
+    if (fa !== fb) return fa - fb;
+    const da = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+    const db2 = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+    return da - db2;
+  });
+
+  if (!all.length) {
     $('#main').innerHTML = '<div class="empty">还没有第二课堂活动<br />登录青春长大后可同步</div>';
     return;
   }
+
   $('#main').innerHTML = `
-    <div class="act-hero">
-      <div class="big">${total.toFixed(1)}</div>
-      <div class="lbl">当前可拿积分（共 ${list.length} 个活动）</div>
-      <div class="tip">示例数据 · 登录青春长大后同步真实活动</div>
-      <div class="act-actions">
-        <button class="act-import" id="syncQczd">一键同步</button>
-        <button class="act-import" id="importAct">＋ 导入活动</button>
-      </div>
-      <div class="act-status" id="actStatus2"></div>
+    <div class="act-stats">
+      ${['劳育', '美育', '创新'].map((b) => `<div class="as-item"><b>${stats[b].toFixed(1)}</b><span>${b} 积分</span></div>`).join('')}
     </div>
-    ${list.map((a) => {
+    <div class="act-tip">可拿积分按未报满的活动统计 · 示例数据</div>
+
+    <div class="seg">
+      ${blocks.map((b) => `<button class="chip ${state.actBlock === b ? 'on' : ''}" data-ab="${b}">${b}</button>`).join('')}
+    </div>
+
+    ${sorted.length ? sorted.map((a) => {
       const dl = fmtDeadline(a.deadline);
-      return `<article class="card act" data-act="${a.id}">
+      return `<article class="card act ${a.full ? 'act-full' : ''}" data-act="${a.id}">
         <div class="card-head">
           <span class="cat cat-act">${esc(a.block || '未分类')}</span>
-          <span class="credits">+${Number(a.credits || 0).toFixed(1)} 积分</span>
+          ${a.full ? '<span class="badge-full">已满</span>' : `<span class="credits">+${Number(a.credits || 0).toFixed(1)} 积分</span>`}
         </div>
         <h3 class="title">${esc(a.title)}</h3>
         <p class="summary">${esc(a.org || '')}${a.location ? ' · ' + esc(a.location) : ''}<br />${esc(fmtRange(a))}</p>
         <div class="card-foot">
-          ${dl.text ? `<span class="deadline ${dl.cls}">报名 ${esc(dl.text)}</span>` : '<span>常年可报</span>'}
+          ${a.full ? '<span class="deadline over">已报满</span>' : (dl.text ? `<span class="deadline ${dl.cls}">报名 ${esc(dl.text)}</span>` : '<span>常年可报</span>')}
         </div>
       </article>`;
-    }).join('')}
+    }).join('') : '<div class="empty">这个类别下还没有活动</div>'}
   `;
-  const ib = $('#importAct');
-  if (ib) ib.addEventListener('click', openActImport);
-  const sb = $('#syncQczd');
-  if (sb) sb.addEventListener('click', triggerQczd);
-}
-
-function triggerQczd() {
-  const st = $('#actStatus2');
-  if (!IS_LOCAL) { st.textContent = '线上演示版不支持抓取，请在本机使用'; return; }
-  st.textContent = '正在读取青春长大页面…';
-  let answered = false;
-  try {
-    if (window.chrome && chrome.runtime && chrome.runtime.sendMessage) {
-      chrome.runtime.sendMessage(EXT_ID, { type: 'qczd-now' }, (res) => {
-        answered = true;
-        if (chrome.runtime.lastError || !res) {
-          st.textContent = '没找到扩展。请到 chrome://extensions 刷新扩展后重试';
-          return;
-        }
-        if (res.mode === 'open') { st.textContent = '已打开青春长大，登录并进入活动页后，再点一次「一键同步」'; return; }
-        if (res.mode === 'empty') { st.textContent = `页面里没识别到活动（记下 ${res.samples || 0} 段样本，我看看结构）`; return; }
-        st.textContent = `同步完成：${res.count} 个活动`;
-        setTimeout(() => load(), 600);
-      });
-      setTimeout(() => { if (!answered) st.textContent = '扩展没有响应，刷新扩展后再试'; }, 4000);
-      return;
-    }
-  } catch (e) {}
-  st.textContent = '这个功能需要 Chrome 扩展（本机版）';
 }
 
 function openActImport() {
@@ -777,6 +769,7 @@ function openAct(id) {
     <div class="panel" style="padding:0 14px">
       <div class="kv"><div class="k">活动时间</div><div class="v">${esc(fmtRange(a))}</div></div>
       ${a.location ? `<div class="kv"><div class="k">地点</div><div class="v">${esc(a.location)}</div></div>` : ''}
+      <div class="kv"><div class="k">状态</div><div class="v">${a.full ? '已报满' : esc(a.status || '报名中')}${a.full ? '（仅作记录）' : ''}</div></div>
       <div class="kv"><div class="k">报名截止</div><div class="v">${a.deadline ? esc(new Date(a.deadline).toLocaleString('zh-CN', { hour12: false })) : '未标注'}</div></div>
       <div class="kv"><div class="k">主办</div><div class="v">${esc(a.org || '')}</div></div>
       <div class="kv"><div class="k">来源</div><div class="v">${esc(a.source || '第二课堂')}</div></div>
@@ -873,6 +866,7 @@ document.addEventListener('click', (e) => {
   const src = e.target.closest('.src-item');
   if (src && src.dataset.src) openSource(src.dataset.src);
   const chip = e.target.closest('.chip');
+  if (chip && chip.dataset.ab) { state.actBlock = chip.dataset.ab; renderActs(); return; }
   if (chip && chip.dataset.g) { state.srcGroup = chip.dataset.g; renderSources(); }
   else if (chip && chip.dataset.cat) { state.cat = chip.dataset.cat; load(); }
   const tab = e.target.closest('.tab');

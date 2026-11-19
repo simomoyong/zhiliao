@@ -25,7 +25,7 @@
   function parseText(raw) {
     const t = String(raw).replace(/\s+/g, ' ').trim();
     if (!/积分/.test(t)) return null;
-    const m = t.match(/(\d+(?:\.\d+)?)\s*积分\s*(.+?)\s*(报名中|已结束|进行中|即将开始|已满)/);
+    const m = t.match(/(\d+(?:\.\d+)?)\s*积分\s*(.+?)\s*(报名中|已结束|进行中|即将开始|已满|人数已满)/);
     if (!m) return null;
     const credits = Number(m[1]);
     const title = m[2].replace(/^[·\s]+/, '').slice(0, 60);
@@ -48,6 +48,8 @@
       deadline: end_at,
       location: (t.match(/地点[:：]?\s*([^\s｜|]{2,20})/) || [])[1] || '',
       org,
+      status: /已满|人数已满/.test(t) ? '已满' : (m[3] || '报名中'),
+      full: /已满|人数已满/.test(t) ? 1 : 0,
       source: '第二课堂 · 自动抓取'
     };
   }

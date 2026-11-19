@@ -183,7 +183,7 @@ const server = http.createServer(async (req, res) => {
       const { items = [] } = await readBody(req);
       const rows = items.map((a) => ({
         ...a,
-        ext_id: a.ext_id || crypto.createHash('sha1').update(`${a.title}|${a.start_at || ''}|${a.org || ''}`).digest('hex').slice(0, 16)
+        ext_id: a.ext_id || crypto.createHash('sha1').update(String(a.title).replace(/\s+/g, '')).digest('hex').slice(0, 16)
       }));
       const n = insertActivities(rows);
       return json(res, 200, { ok: true, upserted: n });

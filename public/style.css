@@ -263,3 +263,13 @@ body {
 .act-actions { display: flex; gap: 8px; margin-top: 10px; }
 .act-actions .act-import { margin-top: 0; }
 .act-status { font-size: 11.5px; color: #9A7B4F; margin-top: 8px; min-height: 14px; }
+
+/* 二课统计与报满 */
+.act-stats { display: flex; gap: 8px; margin: 4px 0 6px; }
+.as-item { flex: 1; background: #fff; border: 1px solid #EEE3CF; border-radius: 12px; padding: 12px 10px; text-align: center; }
+.as-item b { display: block; font-size: 20px; color: #8A5A1E; font-variant-numeric: tabular-nums; }
+.as-item span { font-size: 11px; color: #A98A5C; }
+.act-tip { font-size: 11px; color: var(--faint); margin-bottom: 10px; }
+.act-full { opacity: .55; }
+.act-full .title { text-decoration: line-through; text-decoration-color: #C9B79A; }
+.badge-full { margin-left: auto; font-size: 11px; font-weight: 700; color: #8C6A44; background: #EFE6D6; padding: 2px 8px; border-radius: 6px; }
