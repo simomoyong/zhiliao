@@ -780,6 +780,7 @@ function openAct(id) {
       <div class="kv"><div class="k">报名截止</div><div class="v">${a.deadline ? esc(new Date(a.deadline).toLocaleString('zh-CN', { hour12: false })) : '未标注'}</div></div>
       <div class="kv"><div class="k">主办</div><div class="v">${esc(a.org || '')}</div></div>
       <div class="kv"><div class="k">来源</div><div class="v">${esc(a.source || '第二课堂')}</div></div>
+      <div class="kv"><div class="k">活动页</div><div class="v"><a href="${esc(a.url || 'https://win.9xueqi.com/#/AllActivity')}" target="_blank" rel="noreferrer">${a.url ? '在青春长大打开' : '去青春长大找这个活动'}</a></div></div>
     </div>
     <div class="d-actions"><button class="btn primary" id="actIcs">加入日历</button></div>
     <p class="note">积分与板块以青春长大平台为准；这里只做提醒。</p>

@@ -66,7 +66,11 @@
       seen.add(t);
       if (texts.length < 15) texts.push(t.slice(0, 240));
       const p = parseText(t);
-      if (p) items.push(p);
+      if (p) {
+        const a = el.closest('a') || el.querySelector('a[href*="ctivity"],a[href*="acticvity"]');
+        if (a && a.href) p.url = a.href;
+        items.push(p);
+      }
       if (items.length >= 60) break;
     }
     return { items, texts };
