@@ -235,7 +235,14 @@ async function testPush() {
       el.textContent = '还没有订阅：请先点右侧「开启」，允许通知后再测试';
       return;
     }
-    el.textContent = `已发送 ${r.sent} 条（成功 ${(r.results || []).filter((x) => x.ok).length}）`;
+    const okCount = (r.results || []).filter((x) => x.ok).length;
+    if (okCount === 0) {
+      el.textContent = r.mac
+        ? '浏览器推送不通（FCM 被墙），已改用系统通知发送，看看右上角通知中心'
+        : `浏览器推送失败（成功率 0/${r.sent}）`;
+      return;
+    }
+    el.textContent = `已发送 ${r.sent} 条（成功 ${okCount}）`;
   } catch (e) {
     el.textContent = '发送失败：' + e.message;
   }

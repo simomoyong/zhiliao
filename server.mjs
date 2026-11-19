@@ -2,6 +2,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { execFile } from 'node:child_process';
 import { loadEnv, hasAI, analyze } from './lib/ai.mjs';
 import { runCrawl } from './lib/crawl.mjs';
 import { sendPush, publicKey } from './lib/push.mjs';
@@ -194,13 +195,17 @@ const server = http.createServer(async (req, res) => {
 
     if (p === '/api/push/test' && req.method === 'POST') {
       const subs = listPushSubs();
-      const results = [];
-      for (const sub of subs) {
-        const r = await sendPush(sub);
-        if (!r.ok && (r.status === 404 || r.status === 410)) removePushSub(sub.endpoint);
-        results.push(r);
-      }
-      return json(res, 200, { ok: true, sent: subs.length, results });
+      const results = await Promise.all(subs.map(async (sub) => {
+        try {
+          const r = await sendPush(sub);
+          if (!r.ok && (r.status === 404 || r.status === 410)) removePushSub(sub.endpoint);
+          return r;
+        } catch (e) {
+          return { ok: false, error: String(e.message || e) };
+        }
+      }));
+      const mac = macNotify('知了 · 测试通知', '如果你看到这条，说明系统通知链路是通的');
+      return json(res, 200, { ok: true, sent: subs.length, mac, results });
     }
 
     if (p === '/api/profile' && req.method === 'GET') {
@@ -342,6 +347,17 @@ server.listen(PORT, () => {
   console.log(`AI 模式：${hasAI() ? '已连接 DeepSeek' : '未配置 Key，降级为规则模式'}`);
 });
 
+/* macOS 本机通知：不依赖任何外网推送服务 */
+function macNotify(title, body) {
+  if (process.platform !== 'darwin') return false;
+  const esc = (x) => String(x).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const script = `display notification "${esc(body)}" with title "${esc(title)}"`;
+  execFile('osascript', ['-e', script], (err) => {
+    if (err) console.log('[mac] 通知失败：', err.message);
+  });
+  return true;
+}
+
 /* 有新通知时推送到订阅设备 */
 async function notifyPush(text = '有新的校园通知') {
   const subs = listPushSubs();
@@ -353,6 +369,7 @@ async function notifyPush(text = '有新的校园通知') {
     else if (r.status === 404 || r.status === 410) removePushSub(sub.endpoint);
   }
   console.log(`[push] ${text}：${ok}/${subs.length} 成功`);
+  if (!ok) macNotify('知了 · 校园通知', text);
 }
 
 /* 把本机数据推到线上（有 MIRROR_URL 才启用） */
