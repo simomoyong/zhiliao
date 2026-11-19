@@ -658,7 +658,7 @@ function renderActs() {
   $('#main').innerHTML = `
     <div class="act-hero">
       <div class="big">${total.toFixed(1)}</div>
-      <div class="lbl">当前可拿学分（共 ${list.length} 个活动）</div>
+      <div class="lbl">当前可拿积分（共 ${list.length} 个活动）</div>
       <div class="tip">示例数据 · 登录青春长大后同步真实活动</div>
       <div class="act-actions">
         <button class="act-import" id="syncQczd">一键同步</button>
@@ -671,7 +671,7 @@ function renderActs() {
       return `<article class="card act" data-act="${a.id}">
         <div class="card-head">
           <span class="cat cat-act">${esc(a.block || '未分类')}</span>
-          <span class="credits">+${Number(a.credits || 0).toFixed(1)} 学分</span>
+          <span class="credits">+${Number(a.credits || 0).toFixed(1)} 积分</span>
         </div>
         <h3 class="title">${esc(a.title)}</h3>
         <p class="summary">${esc(a.org || '')}${a.location ? ' · ' + esc(a.location) : ''}<br />${esc(fmtRange(a))}</p>
@@ -716,7 +716,7 @@ function openActImport() {
   $('#sheetPanel').innerHTML = `
     <div class="sheet-bar"></div>
     <h2 class="d-title">导入第二课堂活动</h2>
-    <p class="note" style="margin-top:0">在青春长大活动页选中活动卡片文字（或整页 ⌘A），粘贴到这里。能识别标题、板块、学分、时间地点与截止。</p>
+    <p class="note" style="margin-top:0">在青春长大活动页选中活动卡片文字（或整页 ⌘A），粘贴到这里。能识别标题、板块（劳育/美育/创新）、积分、时间地点与截止。</p>
     <textarea id="actText" class="act-textarea" placeholder="示例：\n非遗剪纸体验工作坊\n板块：文体活动　学分：0.2\n11 月 26 日 15:00 艺术教育中心\n报名截止：11 月 25 日 17:00"></textarea>
     <div class="import-status" id="actStatus"></div>
     <div class="d-actions"><button class="btn primary" id="actDo">识别并导入</button></div>
@@ -726,7 +726,7 @@ function openActImport() {
   $('#actDo').addEventListener('click', doActImport);
 }
 
-const BLOCKS = ['思想成长', '志愿公益', '创新创业', '文体活动', '技能特长', '实践实习', '其他'];
+const BLOCKS = ['劳育', '美育', '创新', '德育', '体育', '其他'];
 
 function parseActs(text) {
   const lines = String(text).split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
@@ -737,7 +737,7 @@ function parseActs(text) {
     title = title.split(new RegExp(BLOCKS.join('|')))[0];
     title = title.replace(/\d+(?:\.\d+)?\s*学分.*$/, '').replace(/\d{1,2}\s*月.*$/, '');
     title = title.replace(/\s+/g, ' ').trim().slice(0, 60);
-    const credits = (line.match(/(\d+(?:\.\d+)?)\s*学分/) || [])[1];
+    const credits = (line.match(/(\d+(?:\.\d+)?)\s*(?:积分|学分)/) || [])[1];
     if (!credits) continue;
     const block = BLOCKS.find((b) => line.includes(b)) || '';
     const dm = line.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*(\d{1,2})[:：](\d{2})/);
@@ -755,7 +755,7 @@ function parseActs(text) {
 async function doActImport() {
   const st = $('#actStatus');
   const items = parseActs($('#actText').value);
-  if (!items.length) { st.textContent = '没识别到活动。每行需包含「学分」，例如：非遗剪纸 0.2 学分'; return; }
+  if (!items.length) { st.textContent = '没识别到活动。每行需包含「积分」，例如：越剧折子戏 1 积分 美育'; return; }
   st.textContent = `识别到 ${items.length} 个活动，正在导入…`;
   try {
     const r = await api('/api/import/activities', { method: 'POST', body: JSON.stringify({ items }) });
@@ -771,7 +771,7 @@ function openAct(id) {
     <div class="sheet-bar"></div>
     <div class="card-head">
       <span class="cat cat-act">${esc(a.block || '未分类')}</span>
-      <span class="credits">+${Number(a.credits || 0).toFixed(1)} 学分</span>
+      <span class="credits">+${Number(a.credits || 0).toFixed(1)} 积分</span>
     </div>
     <h2 class="d-title">${esc(a.title)}</h2>
     <div class="panel" style="padding:0 14px">
@@ -782,7 +782,7 @@ function openAct(id) {
       <div class="kv"><div class="k">来源</div><div class="v">${esc(a.source || '第二课堂')}</div></div>
     </div>
     <div class="d-actions"><button class="btn primary" id="actIcs">加入日历</button></div>
-    <p class="note">学分与板块以青春长大平台为准；这里只做提醒。</p>
+    <p class="note">积分与板块以青春长大平台为准；这里只做提醒。</p>
   `;
   $('#sheet').classList.add('open');
   $('#sheet').setAttribute('aria-hidden', 'false');

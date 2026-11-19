@@ -95,7 +95,7 @@ function toICS(items, acts = []) {
     if (Number.isNaN(d.getTime())) continue;
     const dt = d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
     lines.push('BEGIN:VEVENT', `UID:zhiliao-act-${a.id}@local`, `DTSTAMP:${stamp}`, `DTSTART:${dt}`,
-      `SUMMARY:${icsEscape(`二课截止：${a.title}（${a.block || ''} +${a.credits || 0} 学分）`)}`);
+      `SUMMARY:${icsEscape(`二课截止：${a.title}（${a.block || ''} +${a.credits || 0} 积分）`)}`);
     if (a.location) lines.push(`LOCATION:${icsEscape(a.location)}`);
     lines.push('BEGIN:VALARM', 'TRIGGER:-P1D', 'ACTION:DISPLAY', 'DESCRIPTION:明天截止', 'END:VALARM');
     lines.push('END:VEVENT');

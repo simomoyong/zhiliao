@@ -3,7 +3,8 @@
   if (window.__qczdInjected) return;
   window.__qczdInjected = true;
 
-  const BLOCKS = ['思想成长', '志愿公益', '创新创业', '文体活动', '技能特长', '实践实习', '其他'];
+  const BLOCKS = ['劳育', '美育', '创新', '德育', '体育', '其他'];
+
   let xhrCache = [];
 
   window.addEventListener('message', (e) => {
@@ -17,24 +18,36 @@
     return new Promise((resolve) => setTimeout(() => resolve(xhrCache), 400));
   }
 
+  function toISO(y, mo, d, h, mi) {
+    return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(mi).padStart(2, '0')}:00+08:00`;
+  }
+
   function parseText(raw) {
     const t = String(raw).replace(/\s+/g, ' ').trim();
-    if (!/学分/.test(t)) return null;
-    const credits = (t.match(/(\d+(?:\.\d+)?)\s*学分/) || [])[1];
-    if (!credits) return null;
-    let title = t.split(/[｜|]/)[0];
-    title = title.split(new RegExp(BLOCKS.join('|')))[0];
-    title = title.replace(/\d+(?:\.\d+)?\s*学分.*$/, '').replace(/\d{1,2}\s*月.*$/, '').trim().slice(0, 60);
+    if (!/积分/.test(t)) return null;
+    const m = t.match(/(\d+(?:\.\d+)?)\s*积分\s*(.+?)\s*(报名中|已结束|进行中|即将开始|已满)/);
+    if (!m) return null;
+    const credits = Number(m[1]);
+    const title = m[2].replace(/^[·\s]+/, '').slice(0, 60);
     if (title.length < 4) return null;
-    const block = BLOCKS.find((b) => t.includes(b)) || '';
-    const dm = t.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日?\s*(\d{1,2})[:：](\d{2})/);
-    const start = dm
-      ? `${new Date().getFullYear()}-${String(dm[1]).padStart(2, '0')}-${String(dm[2]).padStart(2, '0')}T${String(dm[3]).padStart(2, '0')}:${dm[4]}:00+08:00`
-      : '';
+    const block = (t.match(/劳育|美育|创新|德育|体育/) || [])[0] || '其他';
+
+    const dm = t.match(/(\d{4})\.(\d{1,2})\.(\d{1,2})\s*(\d{1,2}):(\d{2})\s*[—\-~至]+\s*(\d{4})\.(\d{1,2})\.(\d{1,2})\s*(\d{1,2}):(\d{2})/);
+    const start_at = dm ? toISO(dm[1], dm[2], dm[3], dm[4], dm[5]) : '';
+    const end_at = dm ? toISO(dm[6], dm[7], dm[8], dm[9], dm[10]) : '';
+
+    const orgM = t.match(/(\d{1,2}:\d{2})\s+([^\s]{2,30})\s+(?:\d+\s*人报名|可报名|已报名|报名)/);
+    const org = orgM ? orgM[2] : '';
+
     return {
-      title, block, credits: Number(credits), start_at: start,
+      title,
+      block,
+      credits,
+      start_at,
+      end_at,
+      deadline: end_at,
       location: (t.match(/地点[:：]?\s*([^\s｜|]{2,20})/) || [])[1] || '',
-      org: (t.match(/主办[:：]?\s*([^\s｜|]{2,20})/) || [])[1] || '',
+      org,
       source: '第二课堂 · 自动抓取'
     };
   }
