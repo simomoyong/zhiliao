@@ -219,6 +219,10 @@ async function testPush() {
   el.textContent = '正在发送测试通知…';
   try {
     const r = await api('/api/push/test', { method: 'POST' });
+    if (!r.sent) {
+      el.textContent = '还没有订阅：请先点右侧「开启」，允许通知后再测试';
+      return;
+    }
     el.textContent = `已发送 ${r.sent} 条（成功 ${(r.results || []).filter((x) => x.ok).length}）`;
   } catch (e) {
     el.textContent = '发送失败：' + e.message;
