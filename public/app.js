@@ -715,6 +715,12 @@ function renderActs() {
       </article>`;
     }).join('') : '<div class="empty">这个类别下还没有活动</div>'}
   `;
+  const ib = $('#importAct');
+  if (ib) ib.addEventListener('click', openActImport);
+  const sb = $('#syncQczd');
+  if (sb) sb.addEventListener('click', triggerQczd);
+  const pb = $('#syncProfile');
+  if (pb) pb.addEventListener('click', triggerProfile);
 }
 
 function openActImport() {
