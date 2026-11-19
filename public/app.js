@@ -195,22 +195,34 @@ async function refreshPushStatus() {
 
 async function enablePush() {
   const el = document.getElementById('pushStatus');
+  const set = (t) => { if (el) el.textContent = t; };
+  const timeout = (ms, msg) => new Promise((_, reject) => setTimeout(() => reject(new Error(msg)), ms));
   try {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      el.textContent = '这个浏览器不支持 Web Push，换 Chrome 试试';
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+      set('浏览器不支持：请用 Chrome / Edge 桌面版');
       return;
     }
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') { el.textContent = '你拒绝了通知权限，可在浏览器设置里重新允许'; return; }
-    const reg = await navigator.serviceWorker.ready;
+    set('通知权限：' + Notification.permission + '，正在请求…');
+    const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+    if (perm !== 'granted') {
+      set('权限是「' + perm + '」：点地址栏左侧图标 → 通知 → 允许，再点开启');
+      return;
+    }
+    set('权限已允许，正在注册 Service Worker…');
+    const reg = await Promise.race([
+      navigator.serviceWorker.register('/sw.js').then(() => navigator.serviceWorker.ready),
+      timeout(8000, 'Service Worker 注册超时（可能是浏览器禁用了）')
+    ]);
+    set('Service Worker 就绪，正在订阅…');
     const { key } = await api('/api/push/public-key');
     const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(key) });
+    set('订阅成功，正在保存…');
     await api('/api/push/subscribe', { method: 'POST', body: JSON.stringify({ subscription: sub.toJSON() }) });
-    el.textContent = '已开启，点「测试」发一条看看';
+    set('已开启，新通知会弹系统通知');
     const btn = document.getElementById('pushBtn');
     if (btn) btn.textContent = '已开启';
   } catch (e) {
-    el.textContent = '开启失败：' + e.message;
+    set('开启失败：' + (e && e.message ? e.message : e));
   }
 }
 
