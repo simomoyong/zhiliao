@@ -12,6 +12,7 @@ const state = {
   portal: { lastSync: '', total: 0, url: '' },
   acts: [],
   actBlock: '全部',
+  profile: {},
   feed: localStorage.getItem('zl_feed') || 'subs'
 };
 
@@ -56,6 +57,7 @@ async function load() {
   try { state.health = await api('/api/health'); } catch {}
   try { state.portal = await api('/api/portal-status'); } catch {}
   try { state.acts = (await api('/api/activities')).items || []; } catch {}
+  try { state.profile = await api('/api/profile'); } catch {}
   render();
 }
 
@@ -650,12 +652,16 @@ function fmtRange(a) {
 }
 
 function actStats() {
+  const p = state.profile || {};
+  const mine = { 劳育: Number(p.labor) || 0, 美育: Number(p.aesthetic) || 0, 创新: Number(p.innovation) || 0 };
+  const hasMine = mine.劳育 + mine.美育 + mine.创新 > 0;
+  if (hasMine) return { mode: 'mine', values: mine };
   const out = { 劳育: 0, 美育: 0, 创新: 0 };
   for (const a of state.acts || []) {
     if (a.full || a.status === '已结束') continue;
     if (out[a.block] !== undefined) out[a.block] += Number(a.credits) || 0;
   }
-  return out;
+  return { mode: 'open', values: out };
 }
 
 function renderActs() {
@@ -679,9 +685,16 @@ function renderActs() {
 
   $('#main').innerHTML = `
     <div class="act-stats">
-      ${['劳育', '美育', '创新'].map((b) => `<div class="as-item"><b>${stats[b].toFixed(1)}</b><span>${b} 积分</span></div>`).join('')}
+      ${['劳育', '美育', '创新'].map((b) => `<div class="as-item"><b>${stats.values[b].toFixed(1)}</b><span>${b} 积分</span></div>`).join('')}
     </div>
-    <div class="act-tip">可拿积分按未报满的活动统计 · 示例数据</div>
+    <div class="act-tip">${stats.mode === 'mine' ? '我的积分（来自青春长大成绩页）' : '可拿积分（按未报满活动统计）· 点「同步我的积分」可切换'}</div>
+
+    <div class="act-actions">
+      <button class="act-import" id="syncQczd">一键同步</button>
+      <button class="act-import" id="syncProfile">同步我的积分</button>
+      <button class="act-import" id="importAct">＋ 导入</button>
+    </div>
+    <div class="act-status" id="actStatus2"></div>
 
     <div class="seg">
       ${blocks.map((b) => `<button class="chip ${state.actBlock === b ? 'on' : ''}" data-ab="${b}">${b}</button>`).join('')}

@@ -124,6 +124,36 @@ async function ensureQczd(tabId) {
 }
 
 chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
+  if (msg && msg.type === 'qczd-profile') {
+    (async () => {
+      try {
+        const tabs = await chrome.tabs.query({ url: ['https://win.9xueqi.com/*', 'https://2kt.9xueqi.com/*'] });
+        if (!tabs.length) return sendResponse({ ok: false, mode: 'no-tab' });
+        let r = await new Promise((resolve) => {
+          chrome.tabs.sendMessage(tabs[0].id, { type: 'qczd-profile' }, (res) => resolve(chrome.runtime.lastError ? null : res));
+        });
+        if (!r) {
+          try { await chrome.scripting.executeScript({ target: { tabId: tabs[0].id }, files: ['qczd.js'] }); } catch (e) {}
+          await new Promise((res) => setTimeout(res, 400));
+          r = await new Promise((resolve) => {
+            chrome.tabs.sendMessage(tabs[0].id, { type: 'qczd-profile' }, (res) => resolve(chrome.runtime.lastError ? null : res));
+          });
+        }
+        if (!r || !r.profile) return sendResponse({ ok: false, mode: 'empty' });
+        const pr = await fetch('http://127.0.0.1:8787/api/import/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(r.profile)
+        });
+        const out = await pr.json();
+        return sendResponse({ ok: true, profile: out.profile, url: r.url });
+      } catch (e) {
+        return sendResponse({ ok: false, error: String(e.message || e) });
+      }
+    })();
+    return true;
+  }
+
   if (msg && msg.type === 'qczd-now') {
     (async () => {
       try {

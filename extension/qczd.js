@@ -78,9 +78,42 @@
     return { items, texts };
   }
 
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  async function loadAll() {
+    let last = 0;
+    for (let i = 0; i < 8; i++) {
+      window.scrollTo(0, document.body.scrollHeight);
+      await sleep(600);
+      const h = document.body.scrollHeight;
+      if (h === last) break;
+      last = h;
+    }
+    window.scrollTo(0, 0);
+    await sleep(300);
+  }
+
+  function collectProfile() {
+    const text = (document.body.innerText || '').replace(/\s+/g, ' ');
+    const out = {};
+    const map = { 劳育: 'labor', 美育: 'aesthetic', 创新: 'innovation' };
+    for (const [cn, key] of Object.entries(map)) {
+      const m = text.match(new RegExp(cn + '[^0-9]{0,12}(\\d+(?:\\.\\d+)?)'));
+      if (m) out[key] = Number(m[1]);
+    }
+    const t = text.match(/(\d+(?:\.\d+)?)\s*(?:获得成绩|总积分|我的积分)/);
+    if (t) out.total = Number(t[1]);
+    return out;
+  }
+
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg && msg.type === 'qczd-profile') {
+      sendResponse({ ok: true, profile: collectProfile(), url: location.href });
+      return true;
+    }
     if (!msg || msg.type !== 'qczd-scan') return;
     (async () => {
+      await loadAll();
       const dom = collect();
       const xhr = await askXhr();
       sendResponse({ ok: true, items: dom.items, samples: dom.texts, xhr, url: location.href });

@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import { loadEnv, hasAI, analyze } from './lib/ai.mjs';
 import { runCrawl } from './lib/crawl.mjs';
 import {
-  seedIfEmpty, seedSnapshot, seedActivities, listActivities, insertActivities,
+  seedIfEmpty, seedSnapshot, seedActivities, listActivities, insertActivities, getProfile, setProfile,
   listItems, allItemsForMirror, upsertItems, getItem, markRead, toggleSave, unreadCount,
   getPrefs, setPrefs, insertItem, itemExists, titleExists
 } from './lib/db.mjs';
@@ -173,6 +173,17 @@ const server = http.createServer(async (req, res) => {
       fs.appendFileSync('logs/qczd-debug.log', JSON.stringify({ at: new Date().toISOString(), ...data }) + '\n');
       console.log(`[qczd] 收到 ${ (data.samples || []).length } 条页面样本，已存 logs/qczd-debug.log`);
       return json(res, 200, { ok: true });
+    }
+
+    if (p === '/api/profile' && req.method === 'GET') {
+      return json(res, 200, getProfile());
+    }
+
+    if (p === '/api/import/profile' && req.method === 'POST') {
+      const data = await readBody(req);
+      const out = setProfile(data);
+      console.log('[profile] 我的积分已更新', out);
+      return json(res, 200, { ok: true, profile: out });
     }
 
     if (p === '/api/activities') {
